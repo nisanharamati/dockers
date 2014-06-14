@@ -1,0 +1,44 @@
+#!/bin/bash
+
+if [ $# != 1 ];
+then
+    echo "USAGE: $0 [start|stop|status|list|remove]"
+    exit 0
+fi
+
+
+# generate id as md5 of pwd
+PWD=$(/bin/pwd)
+ID=$(echo -n $PWD | md5sum | sed 's/  -//')
+echo $ID $(/bin/pwd)
+# check if editor is already running
+CMD=$1
+case "$1" in
+    status)
+        echo Status: $(docker ps | grep $ID | grep -o 'Up\(\s\w\+\)*')
+    ;;
+    list)
+        echo $(docker ps -a | grep "$ID\|CONTAINER")
+    ;;
+    start)
+        # check if container already exists with this id
+        if [ "$ID" == "$(docker ps -a | grep -o $ID)" ]
+        then
+            # start old container
+            docker start $ID
+            exit 0
+        fi
+        # otherwise create a new one
+        echo "Creating editor: $ID"
+        docker run -d -p 8123:8888 -v $PWD:/notebooks -t --name $ID nisan/ipython:latest
+    ;;
+    stop)
+        echo "Stopping editor: $ID"
+        docker kill $ID
+    ;;
+    remove)
+        echo "Removing editor: $ID"
+        docker rm $ID
+    ;;
+esac
+
